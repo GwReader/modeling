@@ -1,13 +1,14 @@
-
 library(caret)
 library(ROCR)
 
-pred_out = function(pred, ref, yname, cutoff = .5, positive = NULL, print.prob = T) {
+pred_out = function(pred, ref, yname, positive, cutoff = .5) {
   
   c.yname = as.character(yname)
-  tmp_pred = factor(ifelse(pred >= cutoff, "pos", "neg"))
-  tmp_ctable = caret::confusionMatrix(tmp_pred, ref[, c.yname], positive = positive) #confusion table
+  c.pos = as.character(positive)
   
+  tmp_pred = factor(ifelse(pred >= cutoff, c.pos, setdiff(levels(ref[, c.yname]), c(c.pos))))
+  tmp_ctable = caret::confusionMatrix(tmp_pred, ref[, c.yname], positive = c.pos) #confusion table
+
   sense = tmp_ctable$byClass[1]
   spec = tmp_ctable$byClass[2]
   acc = tmp_ctable$overall["Accuracy"]
@@ -29,9 +30,21 @@ pred_out = function(pred, ref, yname, cutoff = .5, positive = NULL, print.prob =
   
 }
 
-## example
+
+require(ISLR)
+attach(Default)
+
+str(Default)
+
+idx_trn = createDataPartition(Default$default, p = .8, list = F)
+
+train = Default[idx_trn, ] ; test = Default[-idx_trn, ]
+
+model = glm(default ~ balance + income, data = train, family = binomial(link = "logit"))
 
 
-pred.lr = predict(mod.lr, newdata = tmp_test, type = "response") 
+pred_train = predict(model, newdata = train, type = "response")
+pred_test = predict(model, newdata = test, type = "response") 
 
-pred_out(pred.lr, tmp_test, "y", .5, "pos")
+pred_out(pred_train, train, "default", "Yes", .5)
+pred_out(pred_test, test, "default", "Yes", .5)
